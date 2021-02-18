@@ -23,8 +23,8 @@ def determine_entry_type(entry):
 	else:
 		return FileType.UNKNOWN.name
 
-def get_entries_by_path(root_dir, child_dir):
-	entries = os.scandir(root_dir + child_dir)
+def get_entries_by_path(root_dir, child_dir, origin):
+	entries = os.scandir(root_dir + "\\" + child_dir)
 	response = []
 	for entry in entries:
 		dir_entry = {
@@ -32,30 +32,44 @@ def get_entries_by_path(root_dir, child_dir):
 			"type": determine_entry_type(entry) 
 		}
 		response.append(dir_entry)
-	return jsonify(response), 200
+	response_json = jsonify(response) 
+	response_json.headers.add('Access-Control-Allow-Origin', origin)
+	return response_json, 200
 
-def get_error_response(message, error, code):
-	return jsonify({
+def get_error_response(message, error, code, origin):
+	response = jsonify({
 			"message": message,
 			"exception": str(type(error)),
 			"cause": f'{escape(str(error))}'
-		}), code
+		})
+	response.headers.add('Access-Control-Allow-Origin', origin)
+	return response, code
 
 @app.route('/')
 def directories():
 	root_dir = get_root_dir_from_config()
 	child_dir = request.args.get("path", "/")
+	origin = request.headers.get("origin")
 	try:
-		return get_entries_by_path(root_dir, child_dir)
+		return get_entries_by_path(root_dir, child_dir, origin)
 	except NotADirectoryError as error:
 		return get_error_response(
 			f'{escape(child_dir)} is not a directory',
 			error,
-			400
+			400,
+			origin
 		)
 	except FileNotFoundError as error:
 		return get_error_response(
 			f'Directory {escape(child_dir)} not found',
 			error,
-			400
+			400,
+			origin
 		)
+	except PermissionError as error:
+		return get_error_response(
+				f'You have no rights to access {escape(child_dir)}',
+				error,
+				403,
+				origin
+			)
