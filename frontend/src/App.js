@@ -3,17 +3,17 @@ import './App.css';
 import { useState, useEffect } from 'react';
 
 const App = () => {
-  const [path, setPath] = useState("/");
+  const [path, setPath] = useState([]);
   const [entries, setEntries] = useState([]);
 
-  useEffect(() => fetchEntries(), []);
+  useEffect(() => fetchEntries(), [path]);
 
-  const fetchEntries = path => {
+  const fetchEntries = () => {
     let url = 'http://localhost:5000/';
-    if (path !== undefined) {
-      url += `?path=${path}`
+    if (path !== undefined && path.length > 0) {
+      url += `?path=${path.join('/')}`
     }
-    console.log(url);
+
     fetch(url)
       .then(response => response.json())
       .then(data => {
@@ -23,16 +23,22 @@ const App = () => {
       .catch(err => console.log(err));
   }
 
-  const loadNewEntries = (e, path) => {
+  const loadNewEntries = (e, entry) => {
     e.preventDefault();
-    fetchEntries(path);
+      if (entry.type === 'DIRECTORY') {
+        if (entry.name === '..') {
+        setPath(oldPath => oldPath.splice(-1, 1));
+      } else {
+        setPath(oldPath => [...oldPath, entry.name]);
+      }
+    }
   };
 
   return (
     <div>
       <ul>
         {entries && entries.length > 0 && entries.map((entry, idx) => 
-          <li key={`${entry.name}-${idx}`}><a href="" onClick={(e) => loadNewEntries(e, entry.name)}>{entry.name} ({entry.type})</a></li>
+          <li key={`${entry.name}-${idx}`}><a href="" onClick={(e) => loadNewEntries(e, entry)}>{entry.name} ({entry.type})</a></li>
         )}
       </ul>
     </div>
